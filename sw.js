@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moto-dashboard-v2';
+const CACHE_NAME = 'moto-dashboard-v3';
 const ASSETS = [
   './',
   './index.html',
