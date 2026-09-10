@@ -32,15 +32,16 @@
   body{
     display:flex; flex-direction:column; align-items:center;
     min-height:100vh;
-    padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 40px);
+    padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 14px);
   }
   .topbar{
     width:100%; max-width:480px;
     display:flex; justify-content:space-between; align-items:baseline;
     padding:14px 4px 6px;
   }
-  .brand{font-size:13px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; font-weight:600;}
+  .brand{font-size:11px; letter-spacing:.16em; color:var(--dim); text-transform:uppercase; font-weight:600;}
   .brand b{color:var(--text);}
+  .brand .ver{color:var(--dim); font-weight:500; font-size:10px; text-transform:none; letter-spacing:0; margin-left:2px;}
   .status{font-size:12px; letter-spacing:.05em; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace;}
   .status.live{color:var(--safe);}
   .status.err{color:var(--danger);}
@@ -56,12 +57,12 @@
     display:flex; gap:8px; margin:8px 0 4px;
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:4px;
   }
-  .tab-btn{
+  .tab-btn, .mode-btn{
     flex:1; text-align:center; padding:10px 0; border-radius:9px;
     font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:14px; letter-spacing:.04em;
     color:var(--dim); background:transparent; border:none; cursor:pointer;
   }
-  .tab-btn.active{ background:var(--panel-2); color:var(--text); }
+  .tab-btn.active, .mode-btn.active{ background:var(--panel-2); color:var(--text); }
   .tab-btn .badge{
     display:inline-block; min-width:16px; padding:0 4px; margin-left:6px; border-radius:8px;
     font-size:11px; background:var(--safe); color:#06211d; font-weight:700;
@@ -69,7 +70,15 @@
   .panel{ width:100%; max-width:480px; display:none; }
   .panel.active{ display:block; }
 
-  .gauge-wrap{ position:relative; width:100%; margin-top:6px; }
+  .speed-wrap{ text-align:center; padding:2px 0 0; }
+  .speed-val{
+    font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700;
+    font-size:clamp(40px,12vw,52px); line-height:1; letter-spacing:-0.02em;
+  }
+  .speed-val span{font-size:14px; color:var(--dim); font-weight:500; margin-left:4px;}
+  .speed-caption{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.16em; margin-top:1px;}
+
+  .gauge-wrap{ position:relative; width:100%; margin-top:2px; }
   svg{width:100%; height:auto; display:block; overflow:visible;}
   .tick{stroke:var(--line); stroke-width:2;}
   .arc-safe{stroke:var(--safe);}
@@ -81,25 +90,42 @@
   .lbl{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
   .lbl-zero{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
 
-  .readout{ text-align:center; margin-top:-8px; }
+  .readout{ text-align:center; margin-top:-38px; }
   .angle-val{
     font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700;
-    font-size:clamp(44px,14vw,64px); line-height:1; letter-spacing:-0.02em;
+    font-size:26px; line-height:1; letter-spacing:-0.02em;
   }
-  .angle-unit{font-size:16px; color:var(--dim); margin-left:4px; font-weight:500;}
-  .angle-caption{font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.15em; margin-top:2px;}
+  .angle-unit{font-size:12px; color:var(--dim); margin-left:4px; font-weight:500;}
+  .angle-caption{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.12em; margin-top:1px;}
 
-  .grid{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:22px; }
-  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .lap-row{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+  .lap-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 14px;
+  }
+  .lap-card .k{
+    font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .lap-card .t{
+    font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:22px; margin-top:4px;
+  }
+  .lap-card.current .t.waiting{color:var(--dim); font-size:15px; font-weight:600;}
+  .lap-card.prev .t{color:#c9c7c1;}
+  .lap-status-dot{width:7px; height:7px; border-radius:50%; background:var(--line); flex:0 0 auto;}
+  .lap-status-dot.on{background:var(--safe); box-shadow:0 0 8px rgba(47,184,166,.7);}
+
+  .grid{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 14px; }
   .card.wide{grid-column:1 / span 2; display:flex; justify-content:space-between; align-items:center;}
-  .card .k{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
-  .card .v{font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:26px; margin-top:4px;}
-  .card .v span{font-size:13px; color:var(--dim); font-weight:500; margin-left:3px;}
+  .card.hidden{display:none;}
+  .card .k{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
+  .card .v{font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:21px; margin-top:2px;}
+  .card .v span{font-size:12px; color:var(--dim); font-weight:500; margin-left:3px;}
 
-  .controls{ width:100%; display:flex; gap:10px; margin-top:22px; }
+  .controls{ width:100%; display:flex; gap:8px; margin-top:8px; }
   button{
-    flex:1; font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:15px; letter-spacing:.03em;
-    padding:14px 8px; border-radius:10px; border:1px solid var(--line);
+    flex:1; font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:14px; letter-spacing:.03em;
+    padding:11px 8px; border-radius:10px; border:1px solid var(--line);
     background:var(--panel-2); color:var(--text); cursor:pointer;
   }
   button.primary{ background:var(--safe); color:#06211d; border-color:var(--safe); }
@@ -107,9 +133,19 @@
   button:active{transform:scale(0.97);}
   button:disabled{opacity:.4;}
 
+  #coordInput{
+    flex:1.4; font-family:ui-monospace,'JetBrains Mono',monospace; font-size:14px;
+    padding:12px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text);
+  }
+  #coordInput::placeholder{ color:var(--dim); }
+  .coord-hint{ width:100%; font-size:12px; color:var(--dim); margin-top:6px; text-align:center; }
+  .coord-hint.err{ color:var(--danger); }
+  .coord-hint.ok{ color:var(--safe); }
+
   .section-title{
-    width:100%; margin-top:22px; margin-bottom:10px;
-    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim);
+    width:100%; margin-top:10px; margin-bottom:6px;
+    font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim);
     display:flex; justify-content:space-between; align-items:center;
   }
   .section-title b{color:var(--text); font-weight:600;}
@@ -118,13 +154,13 @@
     width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:10px; position:relative;
   }
-  #routeCanvas{ width:100%; height:280px; display:block; border-radius:8px; background:#0d1114; }
+  #routeCanvas{ width:100%; height:220px; display:block; border-radius:8px; background:#0d1114; }
   .map-empty{
     position:absolute; inset:10px; display:flex; align-items:center; justify-content:center;
     color:var(--dim); font-size:13px; text-align:center; padding:0 30px; pointer-events:none;
   }
 
-  .turn-log{ width:100%; margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; }
+  .turn-log{ width:100%; margin-top:8px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; }
   .turn-item{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; }
   .turn-dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto;}
   .turn-dot.safe{background:var(--safe);}
@@ -138,15 +174,21 @@
   .turn-metrics .spd{font-size:11px; color:var(--dim);}
   .turn-empty{color:var(--dim); font-size:13px; text-align:center; padding:16px 0;}
 
-  .note{ width:100%; margin-top:22px; color:var(--dim); font-size:12.5px; line-height:1.5; text-align:center; padding:0 6px 6px; }
-  .note b{color:#a9b0b6;}
+  .lap-log{ width:100%; margin-top:8px; display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; }
+  .lap-item{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 14px; }
+  .lap-item-top{ display:flex; justify-content:space-between; align-items:baseline; }
+  .lap-item-time{ font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:18px; }
+  .lap-item-when{ font-size:11.5px; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; }
+  .lap-item-stats{ display:flex; gap:16px; margin-top:6px; font-size:12px; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; }
+  .lap-item-stats b{ color:var(--text); font-weight:700; }
+  .lap-empty{color:var(--dim); font-size:13px; text-align:center; padding:16px 0;}
 </style>
 </head>
 <body>
 
   <div class="topbar">
     <div>
-      <div class="brand">МОТО <b>ДАШБОРД</b> · експеримент</div>
+      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.0</span></div>
       <div class="offline-pill" id="offlinePill"><span class="dot"></span>офлайн режим</div>
     </div>
     <div class="status" id="status">чака старт</div>
@@ -159,6 +201,16 @@
 
   <!-- ===== TAB: DASHBOARD ===== -->
   <div class="panel active" id="panel-dash">
+    <div class="tabs" style="margin-bottom:6px;">
+      <button class="mode-btn active" id="modeStreetBtn">Улица</button>
+      <button class="mode-btn" id="modeTrackBtn">Писта</button>
+    </div>
+
+    <div class="speed-wrap">
+      <div class="speed-val" id="speedVal">0<span>км/ч</span></div>
+      <div class="speed-caption">Скорост</div>
+    </div>
+
     <div class="gauge-wrap">
       <svg viewBox="0 0 400 210" id="gauge"></svg>
       <div class="readout">
@@ -167,22 +219,41 @@
       </div>
     </div>
 
+    <div class="lap-row">
+      <div class="lap-card prev">
+        <div class="k" id="lapLeftLabel">Предишна обиколка</div>
+        <div class="t" id="prevLapTimer">—</div>
+      </div>
+      <div class="lap-card current">
+        <div class="k">Текуща обиколка <span class="lap-status-dot" id="lapDot"></span></div>
+        <div class="t waiting" id="lapTimer">чака движение…</div>
+      </div>
+    </div>
+
     <div class="grid">
-      <div class="card"><div class="k">Скорост</div><div class="v" id="speedVal">0<span>км/ч</span></div></div>
       <div class="card"><div class="k">Макс. наклон</div><div class="v" id="maxAngle">0.0<span>°</span></div></div>
       <div class="card"><div class="k">Макс. скорост</div><div class="v" id="maxSpeed">0<span>км/ч</span></div></div>
-      <div class="card"><div class="k">GPS точност</div><div class="v" id="gpsAcc">—<span>м</span></div></div>
-      <div class="card wide"><div><div class="k">Изминато разстояние</div><div class="v" id="routeMeta">—</div></div></div>
+      <div class="card hidden"><div class="k">GPS точност</div><div class="v" id="gpsAcc">—<span>м</span></div></div>
+      <div class="card hidden"><div class="k">Изминато разстояние</div><div class="v" id="routeMeta">—</div></div>
     </div>
 
     <div class="controls">
       <button class="primary" id="startBtn">Старт</button>
       <button id="zeroBtn" disabled>Нулирай наклона</button>
-      <button id="resetBtn" disabled>Нова обиколка</button>
+      <button id="resetBtn" disabled>Приключи обиколка</button>
     </div>
+    <div class="controls" id="markStartRow" style="display:none;">
+      <button class="gmaps" id="markStartBtn" disabled>Маркирай тук</button>
+    </div>
+    <div class="controls" id="coordRow" style="display:none; margin-top:8px;">
+      <input type="text" id="coordInput" placeholder="напр. 42.6977, 23.3219" inputmode="decimal">
+      <button id="coordSetBtn">Задай от координати</button>
+    </div>
+    <div class="coord-hint" id="coordHint" style="display:none;"></div>
 
-    <div class="note">
-      <b>Само за експеримент.</b> Наклонът се смята от акселерометъра и жироскопа на телефона (не компаса), но телефонът не е твърдо и точно закрепен като истински инструмент на мотора. Калибрирай с "Нулирай наклона", докато мотото стои изправено на равно, преди да тръгнеш. Работи изцяло офлайн — сензорите и GPS не изискват интернет връзка. Никога не гледай екрана, докато караш.
+    <div class="section-title"><span>История на обиколките</span></div>
+    <div class="lap-log" id="lapLog">
+      <div class="lap-empty">Няма завършени обиколки още</div>
     </div>
   </div>
 
@@ -193,20 +264,16 @@
       <div class="map-empty" id="mapEmpty">Маршрутът ще се появи тук след старт и движение с GPS сигнал</div>
     </div>
 
-    <div class="controls" style="margin-top:12px;">
+    <div class="controls" style="margin-top:8px;">
       <button class="gmaps" id="gmapsBtn" disabled>Отвори завоите в Google Maps</button>
     </div>
-    <div class="controls" style="margin-top:10px;">
+    <div class="controls" style="margin-top:8px;">
       <button id="downloadBtn" disabled>Свали маршрута (JSON)</button>
     </div>
 
     <div class="section-title"><span>Завои</span></div>
     <div class="turn-log" id="turnLog">
       <div class="turn-empty">Все още няма засечени завои</div>
-    </div>
-
-    <div class="note">
-      Картата тук е самостоятелна рисунка на маршрута (не сваля плочки от интернет), затова работи и напълно офлайн. Бутонът "Google Maps" изисква връзка, ако решиш да провериш завоите на истинска карта после.
     </div>
   </div>
 
@@ -231,6 +298,19 @@
   const ctx = canvas.getContext('2d');
   const mapEmpty = document.getElementById('mapEmpty');
   const turnLogEl = document.getElementById('turnLog');
+  const lapTimerEl = document.getElementById('lapTimer');
+  const prevLapTimerEl = document.getElementById('prevLapTimer');
+  const lapLeftLabel = document.getElementById('lapLeftLabel');
+  const lapDot = document.getElementById('lapDot');
+  const modeStreetBtn = document.getElementById('modeStreetBtn');
+  const modeTrackBtn = document.getElementById('modeTrackBtn');
+  const markStartBtn = document.getElementById('markStartBtn');
+  const markStartRow = document.getElementById('markStartRow');
+  const coordRow = document.getElementById('coordRow');
+  const coordInput = document.getElementById('coordInput');
+  const coordSetBtn = document.getElementById('coordSetBtn');
+  const coordHint = document.getElementById('coordHint');
+  const lapLogEl = document.getElementById('lapLog');
 
   function updateOnlineStatus(){ offlinePill.classList.toggle('show', !navigator.onLine); }
   window.addEventListener('online', updateOnlineStatus);
@@ -308,6 +388,171 @@
   let prevFix = null;
   let inTurn = false, turnDir = 0, turnAccum = 0, turnStart = null;
   let turnMaxLean = 0, turnMaxSpeed = 0, turnMinSpeed = 0;
+
+  // ---- Auto lap detection ----
+  const MOVE_THRESHOLD_KMH = 5;
+  const IDLE_TIMEOUT_MS = 90 * 1000;      // parked this long => lap ends (street mode)
+  const MIN_LAP_DISTANCE_M = 80;
+  const MIN_LAP_DURATION_S = 20;
+  const CROSS_RADIUS_M = 25;              // how close counts as "at the start/finish line" (track mode)
+  const MIN_LAP_TIME_S = 15;              // ignore re-crossings faster than this (GPS noise near the line)
+  let laps = [];
+  let lapStartTime = null;
+  let lastMovingTime = null;
+  let idle = true;
+  let lapMovingMs = 0;      // accumulated moving-only time for the current lap
+  let lapRunningSince = null; // timestamp the current moving stretch began, null while paused
+  let mode = 'street';      // 'street' (auto by parking) or 'track' (auto by line crossing)
+  let refPoint = null;      // {lat, lon} of the marked start/finish line
+  let refPrevFix = null;    // {d, t} distance-to-line at the previous GPS fix
+  let lastKnownFix = null;  // {lat, lon, t} always kept fresh, even before a lap starts
+  let bestLapMs = null;
+
+  // ---- Persisted history (survives reload / app restart) ----
+  const STORAGE_KEY = 'moto-dashboard-history-v1';
+  function loadSavedState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {};
+  }
+  function emptyModeState(){ return { laps: [], bestLapMs: null }; }
+  const savedState = Object.assign({ street: emptyModeState(), track: emptyModeState() }, loadSavedState());
+  if(!savedState.street) savedState.street = emptyModeState();
+  if(!savedState.track) savedState.track = emptyModeState();
+
+  function saveState(){
+    savedState[mode] = { laps, bestLapMs: mode === 'track' ? bestLapMs : null };
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState)); }catch(e){}
+  }
+
+  laps = savedState.street.laps || [];
+  renderLaps();
+  updateLeftLapCard();
+
+  function msToClock(ms, tenths){
+    if(ms < 0) ms = 0;
+    const totalMs = ms;
+    const totalSec = Math.floor(ms/1000);
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    const pad = n => String(n).padStart(2,'0');
+    const base = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+    if(!tenths) return base;
+    const d1 = Math.floor((totalMs % 1000) / 100);
+    return `${base}.${d1}`;
+  }
+
+  function updateLapTimerDisplay(){
+    if(lapStartTime === null){
+      lapTimerEl.textContent = running
+        ? (mode === 'track' ? 'маркирай старт/финал' : 'чака движение…')
+        : 'спряно';
+      lapTimerEl.classList.add('waiting');
+      lapDot.classList.remove('on');
+    } else {
+      const ms = lapMovingMs + (lapRunningSince !== null ? (Date.now() - lapRunningSince) : 0);
+      lapTimerEl.textContent = msToClock(ms, true);
+      lapTimerEl.classList.remove('waiting');
+      lapDot.classList.add('on');
+    }
+  }
+  setInterval(updateLapTimerDisplay, 100);
+
+  function renderLaps(){
+    if(laps.length === 0){
+      lapLogEl.innerHTML = '<div class="lap-empty">Няма завършени обиколки още</div>';
+      return;
+    }
+    lapLogEl.innerHTML = laps.map((lp, i) => {
+      const n = laps.length - i;
+      const distStr = lp.distanceKm >= 1 ? fmt(lp.distanceKm,2) + ' км' : Math.round(lp.distanceKm*1000) + ' м';
+      const when = new Date(lp.start).toLocaleTimeString('bg-BG', {hour12:false, hour:'2-digit', minute:'2-digit'});
+      const deltaStr = mode === 'track'
+        ? (lp.isPB
+            ? '<span style="color:var(--safe); font-weight:700;">PB</span>'
+            : `<span style="color:var(--danger);">+${fmt(lp.deltaMs/1000)}с</span>`)
+        : '';
+      return `<div class="lap-item">
+        <div class="lap-item-top">
+          <span class="lap-item-time">#${n} · ${msToClock(lp.durationMs, mode==='track')}</span>
+          <span class="lap-item-when">${deltaStr || when}</span>
+        </div>
+        <div class="lap-item-stats">
+          <span>${distStr}</span>
+          <span>макс <b>${Math.round(lp.maxSpeed)}</b> км/ч</span>
+          <span>накл. <b>${fmt(lp.maxLean)}°</b></span>
+          <span><b>${lp.turnCount}</b> завоя</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function startNewLap(t){
+    lapStartTime = t;
+    lapMovingMs = 0;
+    lapRunningSince = t;
+    maxAngle = 0; maxSpeed = 0;
+    maxAngleEl.textContent = '0.0';
+    maxSpeedEl.innerHTML = '0<span>км/ч</span>';
+    route = []; turns = []; turnMarkers = []; prevFix = null;
+    inTurn = false; turnAccum = 0;
+    turnBadge.textContent = '0';
+    gmapsBtn.disabled = true;
+    routeMetaEl.textContent = '—';
+    renderTurns();
+    drawRoute();
+    downloadBtn.disabled = true;
+    updateLapTimerDisplay();
+  }
+
+  function bankRunningTime(t){
+    if(lapRunningSince !== null){
+      lapMovingMs += (t - lapRunningSince);
+      lapRunningSince = null;
+    }
+  }
+
+  function updateLeftLapCard(){
+    if(mode === 'track'){
+      lapLeftLabel.textContent = 'Най-добра обиколка';
+      prevLapTimerEl.textContent = bestLapMs !== null ? msToClock(bestLapMs, true) : '—';
+    } else {
+      lapLeftLabel.textContent = 'Предишна обиколка';
+      prevLapTimerEl.textContent = laps.length ? msToClock(laps[0].durationMs, false) : '—';
+    }
+  }
+
+  function finalizeLap(endT){
+    if(lapStartTime === null) return;
+    bankRunningTime(endT);
+    const distanceKm = routeDistanceKm();
+    const durationMs = lapMovingMs; // moving time only — stopped time is excluded
+    const minDist = mode === 'track' ? 0 : MIN_LAP_DISTANCE_M;
+    const minDur = mode === 'track' ? 5 : MIN_LAP_DURATION_S;
+    if(distanceKm*1000 >= minDist && durationMs/1000 >= minDur){
+      let isPB = false, deltaMs = 0;
+      if(mode === 'track'){
+        const prevBest = bestLapMs;
+        isPB = prevBest === null || durationMs < prevBest;
+        if(isPB) bestLapMs = durationMs;
+        deltaMs = isPB ? 0 : durationMs - prevBest;
+      }
+      laps.unshift({
+        start: lapStartTime, end: endT, durationMs,
+        distanceKm, maxSpeed, maxLean: maxAngle, turnCount: turns.length,
+        isPB, deltaMs
+      });
+      if(laps.length > 200) laps.length = 200;
+      renderLaps();
+      updateLeftLapCard();
+      saveState();
+    }
+    lapStartTime = null;
+    updateLapTimerDisplay();
+  }
 
   function fmt(n, d=1){ return (Math.round(n * Math.pow(10,d)) / Math.pow(10,d)).toFixed(d); }
   function timeStr(t){ return new Date(t).toLocaleTimeString('bg-BG', {hour12:false}); }
@@ -509,6 +754,8 @@
     const { latitude: lat, longitude: lon, speed, accuracy } = pos.coords;
     const t = pos.timestamp || Date.now();
     gpsAccEl.innerHTML = Math.round(accuracy) + '<span>м</span>';
+    lastKnownFix = { lat, lon, t };
+    markStartBtn.disabled = false;
 
     let kmh = null;
     if(speed !== null && speed !== undefined && speed >= 0) kmh = speed * 3.6;
@@ -519,7 +766,7 @@
       if((kmh === null || kmh === 0) && dt > 0) kmh = (dist / dt) * 3.6;
       if(dist > 1.2 && dt > 0){
         const bearing = bearingDeg(prevFix.lat, prevFix.lon, lat, lon);
-        if(prevFix.bearing !== undefined && kmh > 5){
+        if(prevFix.bearing !== undefined && kmh > MOVE_THRESHOLD_KMH){
           const delta = angleDiff(prevFix.bearing, bearing);
           processTurnDelta(delta, prevFix.lat, prevFix.lon, t, kmh, tickMaxLean);
         }
@@ -529,8 +776,52 @@
 
     if(kmh !== null){
       speedVal.innerHTML = Math.round(kmh) + '<span>км/ч</span>';
+
+      const moving = kmh > MOVE_THRESHOLD_KMH;
+      if(moving){
+        if(mode === 'street' && idle){
+          finalizeLap(t);
+          startNewLap(t);
+          idle = false;
+        } else if(lapStartTime !== null && lapRunningSince === null){
+          lapRunningSince = t; // resumed after a short pause, still the same lap
+        }
+        lastMovingTime = t;
+      } else {
+        bankRunningTime(t);
+        if(mode === 'street' && lastMovingTime !== null && (t - lastMovingTime) > IDLE_TIMEOUT_MS) idle = true;
+      }
+
       if(kmh > maxSpeed){ maxSpeed = kmh; maxSpeedEl.innerHTML = Math.round(maxSpeed) + '<span>км/ч</span>'; }
     }
+
+    // Track mode: the start/finish line is set either by coordinates, by tapping
+    // "Маркирай тук", or automatically at the first movement if nothing was set yet.
+    // A crossing = distance-to-line was shrinking, now grows again (closest approach).
+    if(mode === 'track'){
+      if(refPoint === null){
+        if(kmh !== null && kmh > MOVE_THRESHOLD_KMH){
+          refPoint = { lat, lon };
+          refPrevFix = null;
+          startNewLap(t);
+          lastMovingTime = t;
+          markStartBtn.textContent = 'Премаркирай старт/финал';
+        }
+      } else {
+        const d = distMeters(lat, lon, refPoint.lat, refPoint.lon);
+        if(refPrevFix !== null){
+          const sinceStart = lapStartTime !== null ? (t - lapStartTime)/1000 : Infinity;
+          if(d > refPrevFix.d && refPrevFix.d < CROSS_RADIUS_M && sinceStart > MIN_LAP_TIME_S){
+            const crossT = refPrevFix.t;
+            finalizeLap(crossT);
+            startNewLap(crossT);
+          }
+        }
+        refPrevFix = { d, t };
+      }
+    }
+
+    if(lapStartTime === null) return; // not in an active lap yet — don't log route/turns while idle
 
     route.push({lat, lon, t});
     if(route.length > 3000) route.shift();
@@ -587,16 +878,86 @@
   function stop(){
     window.removeEventListener('devicemotion', handleMotion, true);
     if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
+    if(lapStartTime !== null) finalizeLap(Date.now());
+    idle = true; lastMovingTime = null; lastKnownFix = null;
     running = false;
     statusEl.textContent = 'спряно';
     statusEl.className = 'status';
     startBtn.textContent = 'Старт';
+    markStartBtn.disabled = true;
+    updateLapTimerDisplay();
   }
+
+  function setMode(newMode){
+    if(lapStartTime !== null) finalizeLap(Date.now());
+    saveState(); // persist the mode we're leaving
+    mode = newMode;
+    idle = true; lastMovingTime = null;
+    refPoint = null; refPrevFix = null;
+    const s = savedState[mode] || emptyModeState();
+    laps = s.laps || [];
+    bestLapMs = mode === 'track' ? (s.bestLapMs ?? null) : null;
+    modeStreetBtn.classList.toggle('active', mode === 'street');
+    modeTrackBtn.classList.toggle('active', mode === 'track');
+    resetBtn.style.display = mode === 'street' ? '' : 'none';
+    markStartRow.style.display = mode === 'track' ? '' : 'none';
+    coordRow.style.display = mode === 'track' ? '' : 'none';
+    coordHint.style.display = 'none';
+    coordInput.value = '';
+    markStartBtn.textContent = 'Маркирай тук';
+    markStartBtn.disabled = !running || !lastKnownFix;
+    renderLaps();
+    updateLeftLapCard();
+    updateLapTimerDisplay();
+  }
+  modeStreetBtn.addEventListener('click', () => setMode('street'));
+  modeTrackBtn.addEventListener('click', () => setMode('track'));
+
+  markStartBtn.addEventListener('click', () => {
+    if(!lastKnownFix) return;
+    refPoint = { lat: lastKnownFix.lat, lon: lastKnownFix.lon };
+    refPrevFix = null;
+    if(lapStartTime !== null) finalizeLap(lastKnownFix.t);
+    startNewLap(lastKnownFix.t);
+    lastMovingTime = lastKnownFix.t;
+    markStartBtn.textContent = 'Премаркирай старт/финал';
+    coordHint.style.display = 'none';
+  });
+
+  function showCoordHint(msg, ok){
+    coordHint.textContent = msg;
+    coordHint.className = 'coord-hint ' + (ok ? 'ok' : 'err');
+    coordHint.style.display = 'block';
+  }
+
+  coordSetBtn.addEventListener('click', () => {
+    const raw = coordInput.value.trim();
+    const parts = raw.split(/[,\s]+/).filter(Boolean);
+    if(parts.length !== 2){
+      showCoordHint('Формат: ширина, дължина (напр. 42.6977, 23.3219)', false);
+      return;
+    }
+    const lat = parseFloat(parts[0]);
+    const lon = parseFloat(parts[1]);
+    if(!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180){
+      showCoordHint('Невалидни координати', false);
+      return;
+    }
+    refPoint = { lat, lon };
+    refPrevFix = null;
+    // Just registers the line — the lap itself starts naturally on first crossing,
+    // since the rider isn't necessarily there yet.
+    markStartBtn.textContent = 'Премаркирай старт/финал';
+    showCoordHint(`Линията е зададена на ${fmt(lat,4)}, ${fmt(lon,4)}`, true);
+  });
 
   startBtn.addEventListener('click', () => { running ? stop() : start(); });
   zeroBtn.addEventListener('click', () => { zeroOffset = leanAngle; });
 
   resetBtn.addEventListener('click', () => {
+    // Manually end the current lap right now; the next movement starts a fresh one automatically.
+    if(lapStartTime !== null) finalizeLap(Date.now());
+    idle = true; lastMovingTime = null;
     maxAngle = 0; maxSpeed = 0;
     maxAngleEl.textContent = '0.0';
     maxSpeedEl.innerHTML = '0<span>км/ч</span>';
@@ -608,6 +969,7 @@
     renderTurns();
     drawRoute();
     downloadBtn.disabled = true;
+    updateLapTimerDisplay();
   });
 
   gmapsBtn.addEventListener('click', () => {
@@ -626,8 +988,9 @@
       distance_km: Number(routeDistanceKm().toFixed(3)),
       max_speed_kmh: Math.round(maxSpeed),
       max_lean_deg: Number(maxAngle.toFixed(1)),
-      turns: turns.slice().reverse(),
-      route
+      current_lap_turns: turns.slice().reverse(),
+      current_lap_route: route,
+      completed_laps: laps.slice().reverse()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
