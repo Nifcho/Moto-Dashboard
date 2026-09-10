@@ -161,7 +161,7 @@
     width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:10px; position:relative;
   }
-  #routeCanvas{ width:100%; height:220px; display:block; border-radius:8px; background:#0d1114; }
+  #routeCanvas, #detailCanvas{ width:100%; height:220px; display:block; border-radius:8px; background:#0d1114; }
   .map-empty{
     position:absolute; inset:10px; display:flex; align-items:center; justify-content:center;
     color:var(--dim); font-size:13px; text-align:center; padding:0 30px; pointer-events:none;
@@ -188,6 +188,37 @@
   .lap-item-when{ font-size:11.5px; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; }
   .lap-item-stats{ display:flex; gap:16px; margin-top:6px; font-size:12px; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; }
   .lap-item-stats b{ color:var(--text); font-weight:700; }
+  .lap-card.prev, .lap-card.current{ cursor:pointer; }
+  .lap-card.prev:active, .lap-card.current:active{ background:var(--panel-2); }
+  .lap-item{ cursor:pointer; }
+  .lap-item:active{ background:var(--panel-2); }
+
+  .lap-detail{
+    display:none; position:fixed; inset:0; z-index:50;
+    background: radial-gradient(ellipse at 50% -10%, #1a2024 0%, var(--bg) 60%);
+    padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+    overflow-y:auto;
+  }
+  .lap-detail.open{ display:block; }
+  .detail-top{ display:flex; align-items:center; gap:10px; padding:14px 0 12px; max-width:480px; margin:0 auto; }
+  .detail-back{
+    flex:0 0 auto; width:34px; height:34px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--text); font-size:20px; line-height:1; padding:0;
+  }
+  .detail-title{font-weight:700; font-size:16px; color:var(--text);}
+  .detail-sub{font-size:11px; color:var(--safe); font-family:ui-monospace,monospace; margin-top:1px;}
+  .lap-detail .grid, .lap-detail .map-card, .lap-detail .section-title, .lap-detail .turn-log{
+    max-width:480px; margin-left:auto; margin-right:auto;
+  }
+  #detailActions{ max-width:480px; margin:10px auto 0; }
+  #detailActions .controls{ margin-top:8px; }
+  #detailActions .divider{ height:1px; background:var(--line); margin:12px 0; }
+  .btn-trip{ background:#3a2440; color:#c9a3ff; border-color:#4a3054; }
+  .trip-name-row{ display:flex; gap:8px; margin-top:8px; }
+  .trip-name-row input{
+    flex:1.6; font-family:'Rajdhani',sans-serif; font-size:14px; padding:11px 12px;
+    border-radius:10px; border:1px solid var(--line); background:var(--panel-2); color:var(--text);
+  }
   .lap-empty{color:var(--dim); font-size:13px; text-align:center; padding:16px 0;}
 </style>
 </head>
@@ -195,7 +226,7 @@
 
   <div class="topbar">
     <div>
-      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.2</span></div>
+      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.3</span></div>
       <div class="offline-pill" id="offlinePill"><span class="dot"></span>офлайн режим</div>
     </div>
     <div class="status-col">
@@ -230,11 +261,11 @@
     </div>
 
     <div class="lap-row">
-      <div class="lap-card prev">
+      <div class="lap-card prev" id="lapCardPrev">
         <div class="k" id="lapLeftLabel">Предишна обиколка</div>
         <div class="t" id="prevLapTimer">—</div>
       </div>
-      <div class="lap-card current">
+      <div class="lap-card current" id="lapCardCurrent">
         <div class="k">Текуща обиколка <span class="lap-status-dot" id="lapDot"></span></div>
         <div class="t waiting" id="lapTimer">чака движение…</div>
       </div>
@@ -287,6 +318,31 @@
     </div>
   </div>
 
+  <!-- ===== OVERLAY: LAP DETAIL ===== -->
+  <div class="lap-detail" id="lapDetail">
+    <div class="detail-top">
+      <button class="detail-back" id="detailBack">‹</button>
+      <div>
+        <div class="detail-title" id="detailTitle">Обиколка</div>
+        <div class="detail-sub" id="detailSub">—</div>
+      </div>
+    </div>
+
+    <div class="grid" id="detailGrid"></div>
+
+    <div class="map-card" style="margin-top:10px;">
+      <canvas id="detailCanvas"></canvas>
+      <div class="map-empty" id="detailMapEmpty">Няма записан маршрут</div>
+    </div>
+
+    <div id="detailActions"></div>
+
+    <div class="section-title"><span>Завои</span></div>
+    <div class="turn-log" id="detailTurnList" style="max-height:none;">
+      <div class="turn-empty">Няма засечени завои</div>
+    </div>
+  </div>
+
 <script>
 (function(){
   const statusEl = document.getElementById('status');
@@ -321,6 +377,18 @@
   const coordSetBtn = document.getElementById('coordSetBtn');
   const coordHint = document.getElementById('coordHint');
   const nightBtn = document.getElementById('nightBtn');
+  const lapCardPrev = document.getElementById('lapCardPrev');
+  const lapCardCurrent = document.getElementById('lapCardCurrent');
+  const lapDetailEl = document.getElementById('lapDetail');
+  const detailBack = document.getElementById('detailBack');
+  const detailTitle = document.getElementById('detailTitle');
+  const detailSub = document.getElementById('detailSub');
+  const detailGrid = document.getElementById('detailGrid');
+  const detailCanvas = document.getElementById('detailCanvas');
+  const detailCtx = detailCanvas.getContext('2d');
+  const detailMapEmpty = document.getElementById('detailMapEmpty');
+  const detailActions = document.getElementById('detailActions');
+  const detailTurnList = document.getElementById('detailTurnList');
 
   // ---- Night mode: auto-dim after dark, ridable manual override ----
   let nightOverride = null; // null = follow the clock, true/false = user forced it
@@ -445,13 +513,30 @@
     return {};
   }
   function emptyModeState(){ return { laps: [], bestLapMs: null }; }
-  const savedState = Object.assign({ street: emptyModeState(), track: emptyModeState() }, loadSavedState());
+  const savedState = Object.assign({ street: emptyModeState(), track: emptyModeState(), trips: [] }, loadSavedState());
   if(!savedState.street) savedState.street = emptyModeState();
   if(!savedState.track) savedState.track = emptyModeState();
+  if(!savedState.trips) savedState.trips = [];
 
   function saveState(){
     savedState[mode] = { laps, bestLapMs: mode === 'track' ? bestLapMs : null };
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState)); }catch(e){}
+  }
+  function persistTrips(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState)); }catch(e){}
+  }
+
+  let sessionLapIds = []; // ids of laps finalized since the last "Старт" press, for "Приключи пътуването"
+  let lapIdCounter = 0;
+  function downsampleRoute(pts, maxPoints){
+    if(pts.length <= maxPoints) return pts.map(p => ({lat:p.lat, lon:p.lon}));
+    const out = [];
+    const step = (pts.length - 1) / (maxPoints - 1);
+    for(let i = 0; i < maxPoints; i++){
+      const p = pts[Math.round(i * step)];
+      out.push({lat:p.lat, lon:p.lon});
+    }
+    return out;
   }
 
   laps = savedState.street.laps || [];
@@ -502,7 +587,7 @@
             ? '<span style="color:var(--safe); font-weight:700;">PB</span>'
             : `<span style="color:var(--danger);">+${fmt(lp.deltaMs/1000)}с</span>`)
         : '';
-      return `<div class="lap-item">
+      return `<div class="lap-item" data-lap-id="${lp.id || ''}">
         <div class="lap-item-top">
           <span class="lap-item-time">#${n} · ${msToClock(lp.durationMs, mode==='track')}</span>
           <span class="lap-item-when">${deltaStr || when}</span>
@@ -568,10 +653,14 @@
         deltaMs = isPB ? 0 : durationMs - prevBest;
       }
       laps.unshift({
+        id: 'lap_' + (Date.now()) + '_' + (lapIdCounter++),
         start: lapStartTime, end: endT, durationMs,
         distanceKm, maxSpeed, maxLean: maxAngle, turnCount: turns.length,
-        isPB, deltaMs
+        isPB, deltaMs, mode,
+        turns: turns.slice().reverse(),
+        route: downsampleRoute(route, 300)
       });
+      sessionLapIds.push(laps[0].id);
       if(laps.length > 200) laps.length = 200;
       renderLaps();
       updateLeftLapCard();
@@ -705,21 +794,21 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
 
-  function drawRoute(){
-    if(route.length < 2){
-      mapEmpty.style.display = 'flex';
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+  function renderRouteToCanvas(targetCanvas, targetCtx, emptyEl, pts0, markers, showLastDot){
+    if(pts0.length < 2){
+      if(emptyEl) emptyEl.style.display = 'flex';
+      targetCtx.clearRect(0,0,targetCanvas.width,targetCanvas.height);
       return;
     }
-    mapEmpty.style.display = 'none';
-    const rect = canvas.getBoundingClientRect();
+    if(emptyEl) emptyEl.style.display = 'none';
+    const rect = targetCanvas.getBoundingClientRect();
     const W = rect.width, H = rect.height;
     if(W === 0) return;
-    const origin = route[0];
+    const origin = pts0[0];
     const mPerDegLat = 111320;
     const mPerDegLon = 111320 * Math.cos(origin.lat * Math.PI/180);
 
-    const pts = route.map(p => ({
+    const pts = pts0.map(p => ({
       x: (p.lon - origin.lon) * mPerDegLon,
       y: (p.lat - origin.lat) * mPerDegLat
     }));
@@ -738,37 +827,43 @@
       ];
     }
 
-    ctx.clearRect(0,0,W,H);
-    ctx.beginPath();
+    targetCtx.clearRect(0,0,W,H);
+    targetCtx.beginPath();
     pts.forEach((p,i) => {
       const [cx2,cy2] = toCanvas(p);
-      if(i===0) ctx.moveTo(cx2,cy2); else ctx.lineTo(cx2,cy2);
+      if(i===0) targetCtx.moveTo(cx2,cy2); else targetCtx.lineTo(cx2,cy2);
     });
-    ctx.strokeStyle = '#3aa0ff';
-    ctx.lineWidth = 3;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.stroke();
+    targetCtx.strokeStyle = '#3aa0ff';
+    targetCtx.lineWidth = 3;
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineCap = 'round';
+    targetCtx.stroke();
 
-    turnMarkers.forEach(m => {
+    (markers || []).forEach(m => {
       const x = (m.lon - origin.lon) * mPerDegLon;
       const y = (m.lat - origin.lat) * mPerDegLat;
       const [cx2,cy2] = toCanvas({x,y});
-      ctx.beginPath();
-      ctx.arc(cx2,cy2,5,0,Math.PI*2);
-      ctx.fillStyle = leanZoneColor(m.absLean);
-      ctx.fill();
+      targetCtx.beginPath();
+      targetCtx.arc(cx2,cy2,5,0,Math.PI*2);
+      targetCtx.fillStyle = leanZoneColor(m.absLean);
+      targetCtx.fill();
     });
 
-    const last = pts[pts.length-1];
-    const [lx,ly] = toCanvas(last);
-    ctx.beginPath();
-    ctx.arc(lx,ly,6,0,Math.PI*2);
-    ctx.fillStyle = '#e8e6e1';
-    ctx.shadowColor = 'rgba(232,230,225,0.7)';
-    ctx.shadowBlur = 10;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    if(showLastDot){
+      const last = pts[pts.length-1];
+      const [lx,ly] = toCanvas(last);
+      targetCtx.beginPath();
+      targetCtx.arc(lx,ly,6,0,Math.PI*2);
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.shadowColor = 'rgba(255,255,255,0.7)';
+      targetCtx.shadowBlur = 10;
+      targetCtx.fill();
+      targetCtx.shadowBlur = 0;
+    }
+  }
+
+  function drawRoute(){
+    renderRouteToCanvas(canvas, ctx, mapEmpty, route, turnMarkers, true);
   }
 
   function routeDistanceKm(){
@@ -776,6 +871,165 @@
     for(let i=1;i<route.length;i++) d += distMeters(route[i-1].lat, route[i-1].lon, route[i].lat, route[i].lon);
     return d/1000;
   }
+
+  // ================= LAP DETAIL OVERLAY =================
+  let detailRefreshTimer = null;
+  let detailResizeDone = false;
+
+  function turnMarkersFromTurns(turnsList){
+    return turnsList.map(tn => ({ lat: tn.lat, lon: tn.lon, absLean: tn.maxLean }));
+  }
+
+  function renderTurnListInto(container, turnsList){
+    if(!turnsList || turnsList.length === 0){
+      container.innerHTML = '<div class="turn-empty">Няма засечени завои</div>';
+      return;
+    }
+    const n = turnsList.length;
+    container.innerHTML = turnsList.map((tn, i) => {
+      const cls = leanZoneClass(tn.maxLean);
+      return `<div class="turn-item">
+        <div class="turn-dot ${cls}"></div>
+        <div class="turn-main">#${i+1} · Завой ${tn.dir}<div class="turn-sub">${timeStr(tn.t)} · ${Math.round(tn.angle)}°</div></div>
+        <div class="turn-metrics"><div class="lean">${fmt(tn.maxLean)}°</div><div class="spd">${Math.round(tn.minSpeed)}–${Math.round(tn.maxSpeed)} км/ч</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  function closeLapDetail(){
+    lapDetailEl.classList.remove('open');
+    if(detailRefreshTimer){ clearInterval(detailRefreshTimer); detailRefreshTimer = null; }
+    detailActions.innerHTML = '';
+  }
+  detailBack.addEventListener('click', closeLapDetail);
+
+  function openLapDetail(lap){
+    // A completed lap from history — static snapshot.
+    const distStr = lap.distanceKm >= 1 ? fmt(lap.distanceKm,2) + ' км' : Math.round(lap.distanceKm*1000) + ' м';
+    detailTitle.textContent = 'Завършена обиколка';
+    detailSub.textContent = timeStr(lap.start) + ' · ' + (lap.mode === 'track' ? 'Писта' : 'Улица');
+    detailGrid.innerHTML = `
+      <div class="card"><div class="k">Време</div><div class="v">${msToClock(lap.durationMs, lap.mode==='track')}</div></div>
+      <div class="card"><div class="k">Разстояние</div><div class="v">${distStr}</div></div>
+      <div class="card"><div class="k">Макс. скорост</div><div class="v">${Math.round(lap.maxSpeed)}<span> км/ч</span></div></div>
+      <div class="card"><div class="k">Макс. наклон</div><div class="v">${fmt(lap.maxLean)}<span>°</span></div></div>
+    `;
+    detailActions.innerHTML = '';
+    renderTurnListInto(detailTurnList, lap.turns || []);
+    lapDetailEl.classList.add('open');
+    if(!detailResizeDone){
+      const dpr = window.devicePixelRatio || 1;
+      const rect = detailCanvas.getBoundingClientRect();
+      detailCanvas.width = rect.width * dpr;
+      detailCanvas.height = rect.height * dpr;
+      detailCtx.setTransform(dpr,0,0,dpr,0,0);
+      detailResizeDone = true;
+    }
+    const pts = (lap.route || []).map(p => ({lat:p.lat, lon:p.lon}));
+    renderRouteToCanvas(detailCanvas, detailCtx, detailMapEmpty, pts, turnMarkersFromTurns(lap.turns || []), false);
+  }
+
+  function buildTripNamePrompt(onConfirm){
+    const now = new Date();
+    const defaultName = 'Пътуване ' + now.toLocaleDateString('bg-BG') + ', ' + now.toLocaleTimeString('bg-BG',{hour12:false,hour:'2-digit',minute:'2-digit'});
+    detailActions.innerHTML = `
+      <div class="trip-name-row">
+        <input type="text" id="tripNameInput" value="${defaultName}">
+      </div>
+      <div class="controls">
+        <button class="primary" id="tripConfirmBtn">Запази пътуването</button>
+        <button id="tripCancelBtn">Отказ</button>
+      </div>
+    `;
+    document.getElementById('tripCancelBtn').addEventListener('click', () => openCurrentLapDetail());
+    document.getElementById('tripConfirmBtn').addEventListener('click', () => {
+      const name = document.getElementById('tripNameInput').value.trim() || defaultName;
+      onConfirm(name);
+    });
+  }
+
+  function saveTrip(name){
+    if(lapStartTime !== null) finalizeLap(Date.now());
+    const tripLaps = laps.filter(l => sessionLapIds.includes(l.id))
+                          .sort((a,b) => a.start - b.start);
+    if(tripLaps.length > 0){
+      savedState.trips.unshift({
+        id: 'trip_' + Date.now(),
+        name, mode, createdAt: Date.now(),
+        laps: tripLaps
+      });
+      if(savedState.trips.length > 100) savedState.trips.length = 100;
+      persistTrips();
+    }
+    sessionLapIds = [];
+    stop();
+    closeLapDetail();
+  }
+
+  function renderCurrentLapActions(){
+    detailActions.innerHTML = `
+      <div class="controls">
+        <button id="detailEndLapBtn">Приключи обиколка</button>
+      </div>
+      <div class="divider"></div>
+      <div class="controls">
+        <button class="btn-trip" id="detailEndTripBtn">Приключи пътуването</button>
+      </div>
+    `;
+    document.getElementById('detailEndLapBtn').addEventListener('click', () => {
+      if(lapStartTime !== null) finalizeLap(Date.now());
+      openCurrentLapDetail();
+    });
+    document.getElementById('detailEndTripBtn').addEventListener('click', () => {
+      buildTripNamePrompt(saveTrip);
+    });
+  }
+
+  function refreshCurrentLapDetail(){
+    if(lapStartTime === null){ closeLapDetail(); return; }
+    const ms = lapMovingMs + (lapRunningSince !== null ? (Date.now() - lapRunningSince) : 0);
+    const distKm = routeDistanceKm();
+    const distStr = distKm >= 1 ? fmt(distKm,2) + ' км' : Math.round(distKm*1000) + ' м';
+    detailSub.textContent = 'на живо · ' + (mode === 'track' ? 'Писта' : 'Улица');
+    detailGrid.innerHTML = `
+      <div class="card"><div class="k">Изминало време</div><div class="v">${msToClock(ms, true)}</div></div>
+      <div class="card"><div class="k">Разстояние</div><div class="v">${distStr}</div></div>
+      <div class="card"><div class="k">Макс. скорост</div><div class="v">${Math.round(maxSpeed)}<span> км/ч</span></div></div>
+      <div class="card"><div class="k">Макс. наклон</div><div class="v">${fmt(maxAngle)}<span>°</span></div></div>
+    `;
+    renderTurnListInto(detailTurnList, turns.slice().reverse());
+    renderRouteToCanvas(detailCanvas, detailCtx, detailMapEmpty, route, turnMarkers, true);
+  }
+
+  function openCurrentLapDetail(){
+    if(lapStartTime === null) return; // nothing live to show
+    detailTitle.textContent = 'Текуща обиколка';
+    lapDetailEl.classList.add('open');
+    if(!detailResizeDone){
+      const dpr = window.devicePixelRatio || 1;
+      const rect = detailCanvas.getBoundingClientRect();
+      detailCanvas.width = rect.width * dpr;
+      detailCanvas.height = rect.height * dpr;
+      detailCtx.setTransform(dpr,0,0,dpr,0,0);
+      detailResizeDone = true;
+    }
+    renderCurrentLapActions();
+    refreshCurrentLapDetail();
+    if(detailRefreshTimer) clearInterval(detailRefreshTimer);
+    detailRefreshTimer = setInterval(refreshCurrentLapDetail, 500);
+  }
+
+  lapCardPrev.addEventListener('click', () => {
+    if(laps.length > 0) openLapDetail(laps[0]);
+  });
+  lapCardCurrent.addEventListener('click', openCurrentLapDetail);
+  lapLogEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.lap-item');
+    if(!item) return;
+    const id = item.getAttribute('data-lap-id');
+    const lap = laps.find(l => l.id === id);
+    if(lap) openLapDetail(lap);
+  });
 
   function handlePosition(pos){
     const { latitude: lat, longitude: lon, speed, accuracy } = pos.coords;
@@ -913,6 +1167,7 @@
     }
 
     running = true;
+    sessionLapIds = [];
     statusEl.textContent = 'на живо';
     statusEl.className = 'status live';
     startBtn.textContent = 'Спри';
@@ -938,6 +1193,7 @@
   function setMode(newMode){
     if(lapStartTime !== null) finalizeLap(Date.now());
     saveState(); // persist the mode we're leaving
+    sessionLapIds = [];
     mode = newMode;
     idle = true; lastMovingTime = null;
     refPoint = null; refPrevFix = null;
