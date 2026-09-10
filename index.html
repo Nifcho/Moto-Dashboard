@@ -11,14 +11,14 @@
 <style>
   :root{
     --bg:#0a0c0e;
-    --panel:#12161a;
-    --panel-2:#181d22;
-    --line:#262c32;
-    --text:#e8e6e1;
-    --dim:#7d8790;
-    --safe:#2fb8a6;
-    --warn:#ffb020;
-    --danger:#e1443c;
+    --panel:#151a1f;
+    --panel-2:#1b2127;
+    --line:#333c46;
+    --text:#ffffff;
+    --dim:#8d97a1;
+    --safe:#37cbb0;
+    --warn:#ffbc38;
+    --danger:#ff5350;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{
@@ -28,7 +28,9 @@
     font-family:'Rajdhani', ui-sans-serif, system-ui, -apple-system, sans-serif;
     overscroll-behavior:none;
     user-select:none;
+    transition:filter .4s ease;
   }
+  body.night{ filter:brightness(0.6) sepia(0.16) saturate(0.85); }
   body{
     display:flex; flex-direction:column; align-items:center;
     min-height:100vh;
@@ -42,9 +44,14 @@
   .brand{font-size:11px; letter-spacing:.16em; color:var(--dim); text-transform:uppercase; font-weight:600;}
   .brand b{color:var(--text);}
   .brand .ver{color:var(--dim); font-weight:500; font-size:10px; text-transform:none; letter-spacing:0; margin-left:2px;}
+  .status-col{display:flex; flex-direction:column; align-items:flex-end; gap:4px;}
   .status{font-size:12px; letter-spacing:.05em; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace;}
   .status.live{color:var(--safe);}
   .status.err{color:var(--danger);}
+  .night-btn{
+    font-size:11px; padding:4px 9px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--dim); font-family:'Rajdhani',sans-serif; font-weight:700;
+  }
   .offline-pill{
     display:none; align-items:center; gap:5px; font-size:11px; color:var(--dim);
     font-family:ui-monospace,monospace; margin-top:2px;
@@ -73,9 +80,9 @@
   .speed-wrap{ text-align:center; padding:2px 0 0; }
   .speed-val{
     font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700;
-    font-size:clamp(40px,12vw,52px); line-height:1; letter-spacing:-0.02em;
+    font-size:clamp(46px,14vw,60px); line-height:1; letter-spacing:-0.02em;
   }
-  .speed-val span{font-size:14px; color:var(--dim); font-weight:500; margin-left:4px;}
+  .speed-val span{font-size:15px; color:var(--dim); font-weight:600; margin-left:4px;}
   .speed-caption{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.16em; margin-top:1px;}
 
   .gauge-wrap{ position:relative; width:100%; margin-top:2px; }
@@ -85,17 +92,17 @@
   .arc-warn{stroke:var(--warn);}
   .arc-danger{stroke:var(--danger);}
   .arc-bg{stroke:#1c2126;}
-  .needle{stroke:var(--text); stroke-width:3; filter:drop-shadow(0 0 6px rgba(232,230,225,.35));}
+  .needle{stroke:var(--text); stroke-width:4; filter:drop-shadow(0 0 6px rgba(255,255,255,.4));}
   .needle-hub{fill:var(--text);}
   .lbl{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
   .lbl-zero{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
 
-  .readout{ text-align:center; margin-top:-38px; }
+  .readout{ text-align:center; margin-top:-40px; }
   .angle-val{
     font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700;
-    font-size:26px; line-height:1; letter-spacing:-0.02em;
+    font-size:30px; line-height:1; letter-spacing:-0.02em;
   }
-  .angle-unit{font-size:12px; color:var(--dim); margin-left:4px; font-weight:500;}
+  .angle-unit{font-size:13px; color:var(--dim); margin-left:4px; font-weight:600;}
   .angle-caption{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.12em; margin-top:1px;}
 
   .lap-row{ width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
@@ -107,7 +114,7 @@
     display:flex; justify-content:space-between; align-items:center;
   }
   .lap-card .t{
-    font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:22px; margin-top:4px;
+    font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:25px; margin-top:3px;
   }
   .lap-card.current .t.waiting{color:var(--dim); font-size:15px; font-weight:600;}
   .lap-card.prev .t{color:#c9c7c1;}
@@ -119,7 +126,7 @@
   .card.wide{grid-column:1 / span 2; display:flex; justify-content:space-between; align-items:center;}
   .card.hidden{display:none;}
   .card .k{font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
-  .card .v{font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:21px; margin-top:2px;}
+  .card .v{font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:23px; margin-top:2px;}
   .card .v span{font-size:12px; color:var(--dim); font-weight:500; margin-left:3px;}
 
   .controls{ width:100%; display:flex; gap:8px; margin-top:8px; }
@@ -188,10 +195,13 @@
 
   <div class="topbar">
     <div>
-      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.0</span></div>
+      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.1</span></div>
       <div class="offline-pill" id="offlinePill"><span class="dot"></span>офлайн режим</div>
     </div>
-    <div class="status" id="status">чака старт</div>
+    <div class="status-col">
+      <div class="status" id="status">чака старт</div>
+      <button class="night-btn" id="nightBtn">Нощен режим</button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -310,6 +320,23 @@
   const coordInput = document.getElementById('coordInput');
   const coordSetBtn = document.getElementById('coordSetBtn');
   const coordHint = document.getElementById('coordHint');
+  const nightBtn = document.getElementById('nightBtn');
+
+  // ---- Night mode: auto-dim after dark, ridable manual override ----
+  let nightOverride = null; // null = follow the clock, true/false = user forced it
+  function applyNightMode(){
+    const h = new Date().getHours();
+    const auto = h >= 20 || h < 6;
+    const isNight = nightOverride === null ? auto : nightOverride;
+    document.body.classList.toggle('night', isNight);
+    nightBtn.textContent = isNight ? 'Дневен режим' : 'Нощен режим';
+  }
+  nightBtn.addEventListener('click', () => {
+    nightOverride = !document.body.classList.contains('night');
+    applyNightMode();
+  });
+  applyNightMode();
+  setInterval(applyNightMode, 5 * 60 * 1000);
   const lapLogEl = document.getElementById('lapLog');
 
   function updateOnlineStatus(){ offlinePill.classList.toggle('show', !navigator.onLine); }
@@ -345,12 +372,12 @@
     return `M ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2}`;
   }
   let svgHTML = '';
-  svgHTML += `<path d="${arcPath(-MAXA, MAXA, r)}" class="arc-bg" fill="none" stroke-width="18"/>`;
-  svgHTML += `<path d="${arcPath(-SAFE, SAFE, r)}" class="arc-safe" fill="none" stroke-width="18"/>`;
-  svgHTML += `<path d="${arcPath(SAFE, WARN, r)}" class="arc-warn" fill="none" stroke-width="18"/>`;
-  svgHTML += `<path d="${arcPath(-WARN, -SAFE, r)}" class="arc-warn" fill="none" stroke-width="18"/>`;
-  svgHTML += `<path d="${arcPath(WARN, MAXA, r)}" class="arc-danger" fill="none" stroke-width="18"/>`;
-  svgHTML += `<path d="${arcPath(-MAXA, -WARN, r)}" class="arc-danger" fill="none" stroke-width="18"/>`;
+  svgHTML += `<path d="${arcPath(-MAXA, MAXA, r)}" class="arc-bg" fill="none" stroke-width="20"/>`;
+  svgHTML += `<path d="${arcPath(-SAFE, SAFE, r)}" class="arc-safe" fill="none" stroke-width="20"/>`;
+  svgHTML += `<path d="${arcPath(SAFE, WARN, r)}" class="arc-warn" fill="none" stroke-width="20"/>`;
+  svgHTML += `<path d="${arcPath(-WARN, -SAFE, r)}" class="arc-warn" fill="none" stroke-width="20"/>`;
+  svgHTML += `<path d="${arcPath(WARN, MAXA, r)}" class="arc-danger" fill="none" stroke-width="20"/>`;
+  svgHTML += `<path d="${arcPath(-MAXA, -WARN, r)}" class="arc-danger" fill="none" stroke-width="20"/>`;
   for(let a=-MAXA; a<=MAXA; a+=10){
     const [x1,y1] = toXY(a, r-16);
     const [x2,y2] = toXY(a, r+2);
