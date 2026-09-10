@@ -56,12 +56,12 @@
     display:flex; gap:8px; margin:8px 0 4px;
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:4px;
   }
-  .tab-btn{
+  .tab-btn, .mode-btn{
     flex:1; text-align:center; padding:10px 0; border-radius:9px;
     font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:14px; letter-spacing:.04em;
     color:var(--dim); background:transparent; border:none; cursor:pointer;
   }
-  .tab-btn.active{ background:var(--panel-2); color:var(--text); }
+  .tab-btn.active, .mode-btn.active{ background:var(--panel-2); color:var(--text); }
   .tab-btn .badge{
     display:inline-block; min-width:16px; padding:0 4px; margin-left:6px; border-radius:8px;
     font-size:11px; background:var(--safe); color:#06211d; font-weight:700;
@@ -193,6 +193,11 @@
 
   <!-- ===== TAB: DASHBOARD ===== -->
   <div class="panel active" id="panel-dash">
+    <div class="tabs" style="margin-bottom:10px;">
+      <button class="mode-btn active" id="modeStreetBtn">Улица</button>
+      <button class="mode-btn" id="modeTrackBtn">Писта</button>
+    </div>
+
     <div class="speed-wrap">
       <div class="speed-val" id="speedVal">0<span>км/ч</span></div>
       <div class="speed-caption">Скорост</div>
@@ -208,7 +213,7 @@
 
     <div class="lap-row">
       <div class="lap-card prev">
-        <div class="k">Предишна обиколка</div>
+        <div class="k" id="lapLeftLabel">Предишна обиколка</div>
         <div class="t" id="prevLapTimer">—</div>
       </div>
       <div class="lap-card current">
@@ -229,6 +234,9 @@
       <button id="zeroBtn" disabled>Нулирай наклона</button>
       <button id="resetBtn" disabled>Приключи обиколка</button>
     </div>
+    <div class="controls" id="markStartRow" style="display:none;">
+      <button class="gmaps" id="markStartBtn" disabled>Маркирай старт/финал</button>
+    </div>
 
     <div class="section-title"><span>История на обиколките</span></div>
     <div class="lap-log" id="lapLog">
@@ -236,7 +244,7 @@
     </div>
 
     <div class="note">
-      <b>Само за експеримент.</b> Наклонът се смята от акселерометъра и жироскопа на телефона (не компаса), но телефонът не е твърдо и точно закрепен като истински инструмент на мотора. Калибрирай с "Нулирай наклона", докато мотото стои изправено на равно, преди да тръгнеш. Обиколката стартира сама щом усети движение и приключва сама, ако постоиш паркирал повече от минута и половина. Работи изцяло офлайн. Никога не гледай екрана, докато караш.
+      <b>Само за експеримент.</b> Наклонът се смята от акселерометъра и жироскопа на телефона (не компаса), но телефонът не е твърдо и точно закрепен като истински инструмент на мотора. Калибрирай с "Нулирай наклона", докато мотото стои изправено на равно, преди да тръгнеш. В "Улица" обиколката приключва сама след 90 сек. паркиране. В "Писта" маркирай старт/финалната линия веднъж — всяко следващо преминаване покрай нея приключва обиколката и почва нова, с време до 0.1 сек. и делта спрямо най-добрата. GPS-ът на телефона обикновено чете позиция веднъж в секунда, така че засичането на линията няма прецизността на истински транспондер. Работи изцяло офлайн. Никога не гледай екрана, докато караш.
     </div>
   </div>
 
@@ -287,7 +295,12 @@
   const turnLogEl = document.getElementById('turnLog');
   const lapTimerEl = document.getElementById('lapTimer');
   const prevLapTimerEl = document.getElementById('prevLapTimer');
+  const lapLeftLabel = document.getElementById('lapLeftLabel');
   const lapDot = document.getElementById('lapDot');
+  const modeStreetBtn = document.getElementById('modeStreetBtn');
+  const modeTrackBtn = document.getElementById('modeTrackBtn');
+  const markStartBtn = document.getElementById('markStartBtn');
+  const markStartRow = document.getElementById('markStartRow');
   const lapLogEl = document.getElementById('lapLog');
 
   function updateOnlineStatus(){ offlinePill.classList.toggle('show', !navigator.onLine); }
@@ -369,36 +382,52 @@
 
   // ---- Auto lap detection ----
   const MOVE_THRESHOLD_KMH = 5;
-  const IDLE_TIMEOUT_MS = 90 * 1000;      // parked this long => lap ends
+  const IDLE_TIMEOUT_MS = 90 * 1000;      // parked this long => lap ends (street mode)
   const MIN_LAP_DISTANCE_M = 80;
   const MIN_LAP_DURATION_S = 20;
+  const CROSS_RADIUS_M = 25;              // how close counts as "at the start/finish line" (track mode)
+  const MIN_LAP_TIME_S = 15;              // ignore re-crossings faster than this (GPS noise near the line)
   let laps = [];
   let lapStartTime = null;
   let lastMovingTime = null;
   let idle = true;
+  let lapMovingMs = 0;      // accumulated moving-only time for the current lap
+  let lapRunningSince = null; // timestamp the current moving stretch began, null while paused
+  let mode = 'street';      // 'street' (auto by parking) or 'track' (auto by line crossing)
+  let refPoint = null;      // {lat, lon} of the marked start/finish line
+  let refPrevFix = null;    // {d, t} distance-to-line at the previous GPS fix
+  let lastKnownFix = null;  // {lat, lon, t} always kept fresh, even before a lap starts
+  let bestLapMs = null;
 
-  function msToClock(ms){
+  function msToClock(ms, tenths){
     if(ms < 0) ms = 0;
+    const totalMs = ms;
     const totalSec = Math.floor(ms/1000);
     const h = Math.floor(totalSec/3600);
     const m = Math.floor((totalSec%3600)/60);
     const s = totalSec%60;
     const pad = n => String(n).padStart(2,'0');
-    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+    const base = h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+    if(!tenths) return base;
+    const d1 = Math.floor((totalMs % 1000) / 100);
+    return `${base}.${d1}`;
   }
 
   function updateLapTimerDisplay(){
     if(lapStartTime === null){
-      lapTimerEl.textContent = running ? 'чака движение…' : 'спряно';
+      lapTimerEl.textContent = running
+        ? (mode === 'track' ? 'маркирай старт/финал' : 'чака движение…')
+        : 'спряно';
       lapTimerEl.classList.add('waiting');
       lapDot.classList.remove('on');
     } else {
-      lapTimerEl.textContent = msToClock(Date.now() - lapStartTime);
+      const ms = lapMovingMs + (lapRunningSince !== null ? (Date.now() - lapRunningSince) : 0);
+      lapTimerEl.textContent = msToClock(ms, true);
       lapTimerEl.classList.remove('waiting');
       lapDot.classList.add('on');
     }
   }
-  setInterval(updateLapTimerDisplay, 1000);
+  setInterval(updateLapTimerDisplay, 100);
 
   function renderLaps(){
     if(laps.length === 0){
@@ -409,10 +438,15 @@
       const n = laps.length - i;
       const distStr = lp.distanceKm >= 1 ? fmt(lp.distanceKm,2) + ' км' : Math.round(lp.distanceKm*1000) + ' м';
       const when = new Date(lp.start).toLocaleTimeString('bg-BG', {hour12:false, hour:'2-digit', minute:'2-digit'});
+      const deltaStr = mode === 'track'
+        ? (lp.isPB
+            ? '<span style="color:var(--safe); font-weight:700;">PB</span>'
+            : `<span style="color:var(--danger);">+${fmt(lp.deltaMs/1000)}с</span>`)
+        : '';
       return `<div class="lap-item">
         <div class="lap-item-top">
-          <span class="lap-item-time">#${n} · ${msToClock(lp.durationMs)}</span>
-          <span class="lap-item-when">${when}</span>
+          <span class="lap-item-time">#${n} · ${msToClock(lp.durationMs, mode==='track')}</span>
+          <span class="lap-item-when">${deltaStr || when}</span>
         </div>
         <div class="lap-item-stats">
           <span>${distStr}</span>
@@ -426,6 +460,8 @@
 
   function startNewLap(t){
     lapStartTime = t;
+    lapMovingMs = 0;
+    lapRunningSince = t;
     maxAngle = 0; maxSpeed = 0;
     maxAngleEl.textContent = '0.0';
     maxSpeedEl.innerHTML = '0<span>км/ч</span>';
@@ -440,17 +476,45 @@
     updateLapTimerDisplay();
   }
 
+  function bankRunningTime(t){
+    if(lapRunningSince !== null){
+      lapMovingMs += (t - lapRunningSince);
+      lapRunningSince = null;
+    }
+  }
+
+  function updateLeftLapCard(){
+    if(mode === 'track'){
+      lapLeftLabel.textContent = 'Най-добра обиколка';
+      prevLapTimerEl.textContent = bestLapMs !== null ? msToClock(bestLapMs, true) : '—';
+    } else {
+      lapLeftLabel.textContent = 'Предишна обиколка';
+      prevLapTimerEl.textContent = laps.length ? msToClock(laps[0].durationMs, false) : '—';
+    }
+  }
+
   function finalizeLap(endT){
     if(lapStartTime === null) return;
+    bankRunningTime(endT);
     const distanceKm = routeDistanceKm();
-    const durationMs = endT - lapStartTime;
-    if(distanceKm*1000 >= MIN_LAP_DISTANCE_M && durationMs/1000 >= MIN_LAP_DURATION_S){
+    const durationMs = lapMovingMs; // moving time only — stopped time is excluded
+    const minDist = mode === 'track' ? 0 : MIN_LAP_DISTANCE_M;
+    const minDur = mode === 'track' ? 5 : MIN_LAP_DURATION_S;
+    if(distanceKm*1000 >= minDist && durationMs/1000 >= minDur){
+      let isPB = false, deltaMs = 0;
+      if(mode === 'track'){
+        const prevBest = bestLapMs;
+        isPB = prevBest === null || durationMs < prevBest;
+        if(isPB) bestLapMs = durationMs;
+        deltaMs = isPB ? 0 : durationMs - prevBest;
+      }
       laps.unshift({
         start: lapStartTime, end: endT, durationMs,
-        distanceKm, maxSpeed, maxLean: maxAngle, turnCount: turns.length
+        distanceKm, maxSpeed, maxLean: maxAngle, turnCount: turns.length,
+        isPB, deltaMs
       });
       renderLaps();
-      prevLapTimerEl.textContent = msToClock(durationMs);
+      updateLeftLapCard();
     }
     lapStartTime = null;
     updateLapTimerDisplay();
@@ -656,6 +720,8 @@
     const { latitude: lat, longitude: lon, speed, accuracy } = pos.coords;
     const t = pos.timestamp || Date.now();
     gpsAccEl.innerHTML = Math.round(accuracy) + '<span>м</span>';
+    lastKnownFix = { lat, lon, t };
+    markStartBtn.disabled = false;
 
     let kmh = null;
     if(speed !== null && speed !== undefined && speed >= 0) kmh = speed * 3.6;
@@ -677,18 +743,37 @@
     if(kmh !== null){
       speedVal.innerHTML = Math.round(kmh) + '<span>км/ч</span>';
 
-      if(kmh > MOVE_THRESHOLD_KMH){
-        if(idle){
+      const moving = kmh > MOVE_THRESHOLD_KMH;
+      if(moving){
+        if(mode === 'street' && idle){
           finalizeLap(t);
           startNewLap(t);
           idle = false;
+        } else if(lapStartTime !== null && lapRunningSince === null){
+          lapRunningSince = t; // resumed after a short pause, still the same lap
         }
         lastMovingTime = t;
-      } else if(lastMovingTime !== null && (t - lastMovingTime) > IDLE_TIMEOUT_MS){
-        idle = true;
+      } else {
+        bankRunningTime(t);
+        if(mode === 'street' && lastMovingTime !== null && (t - lastMovingTime) > IDLE_TIMEOUT_MS) idle = true;
       }
 
       if(kmh > maxSpeed){ maxSpeed = kmh; maxSpeedEl.innerHTML = Math.round(maxSpeed) + '<span>км/ч</span>'; }
+    }
+
+    // Track mode: detect passing the marked start/finish line by watching the
+    // distance-to-line shrink then start growing again (closest-approach = crossing).
+    if(mode === 'track' && refPoint){
+      const d = distMeters(lat, lon, refPoint.lat, refPoint.lon);
+      if(refPrevFix !== null){
+        const sinceStart = lapStartTime !== null ? (t - lapStartTime)/1000 : Infinity;
+        if(d > refPrevFix.d && refPrevFix.d < CROSS_RADIUS_M && sinceStart > MIN_LAP_TIME_S){
+          const crossT = refPrevFix.t;
+          finalizeLap(crossT);
+          startNewLap(crossT);
+        }
+      }
+      refPrevFix = { d, t };
     }
 
     if(lapStartTime === null) return; // not in an active lap yet — don't log route/turns while idle
@@ -749,13 +834,43 @@
     window.removeEventListener('devicemotion', handleMotion, true);
     if(watchId !== null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
     if(lapStartTime !== null) finalizeLap(Date.now());
-    idle = true; lastMovingTime = null;
+    idle = true; lastMovingTime = null; lastKnownFix = null;
     running = false;
     statusEl.textContent = 'спряно';
     statusEl.className = 'status';
     startBtn.textContent = 'Старт';
+    markStartBtn.disabled = true;
     updateLapTimerDisplay();
   }
+
+  function setMode(newMode){
+    if(lapStartTime !== null) finalizeLap(Date.now());
+    mode = newMode;
+    idle = true; lastMovingTime = null;
+    refPoint = null; refPrevFix = null; bestLapMs = null;
+    laps = [];
+    modeStreetBtn.classList.toggle('active', mode === 'street');
+    modeTrackBtn.classList.toggle('active', mode === 'track');
+    resetBtn.style.display = mode === 'street' ? '' : 'none';
+    markStartRow.style.display = mode === 'track' ? '' : 'none';
+    markStartBtn.textContent = 'Маркирай старт/финал';
+    markStartBtn.disabled = !running || !lastKnownFix;
+    renderLaps();
+    updateLeftLapCard();
+    updateLapTimerDisplay();
+  }
+  modeStreetBtn.addEventListener('click', () => setMode('street'));
+  modeTrackBtn.addEventListener('click', () => setMode('track'));
+
+  markStartBtn.addEventListener('click', () => {
+    if(!lastKnownFix) return;
+    refPoint = { lat: lastKnownFix.lat, lon: lastKnownFix.lon };
+    refPrevFix = null;
+    if(lapStartTime !== null) finalizeLap(lastKnownFix.t);
+    startNewLap(lastKnownFix.t);
+    lastMovingTime = lastKnownFix.t;
+    markStartBtn.textContent = 'Премаркирай старт/финал';
+  });
 
   startBtn.addEventListener('click', () => { running ? stop() : start(); });
   zeroBtn.addEventListener('click', () => { zeroOffset = leanAngle; });
