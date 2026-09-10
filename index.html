@@ -399,6 +399,29 @@
   let lastKnownFix = null;  // {lat, lon, t} always kept fresh, even before a lap starts
   let bestLapMs = null;
 
+  // ---- Persisted history (survives reload / app restart) ----
+  const STORAGE_KEY = 'moto-dashboard-history-v1';
+  function loadSavedState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return {};
+  }
+  function emptyModeState(){ return { laps: [], bestLapMs: null }; }
+  const savedState = Object.assign({ street: emptyModeState(), track: emptyModeState() }, loadSavedState());
+  if(!savedState.street) savedState.street = emptyModeState();
+  if(!savedState.track) savedState.track = emptyModeState();
+
+  function saveState(){
+    savedState[mode] = { laps, bestLapMs: mode === 'track' ? bestLapMs : null };
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState)); }catch(e){}
+  }
+
+  laps = savedState.street.laps || [];
+  renderLaps();
+  updateLeftLapCard();
+
   function msToClock(ms, tenths){
     if(ms < 0) ms = 0;
     const totalMs = ms;
@@ -513,8 +536,10 @@
         distanceKm, maxSpeed, maxLean: maxAngle, turnCount: turns.length,
         isPB, deltaMs
       });
+      if(laps.length > 200) laps.length = 200;
       renderLaps();
       updateLeftLapCard();
+      saveState();
     }
     lapStartTime = null;
     updateLapTimerDisplay();
@@ -845,10 +870,13 @@
 
   function setMode(newMode){
     if(lapStartTime !== null) finalizeLap(Date.now());
+    saveState(); // persist the mode we're leaving
     mode = newMode;
     idle = true; lastMovingTime = null;
-    refPoint = null; refPrevFix = null; bestLapMs = null;
-    laps = [];
+    refPoint = null; refPrevFix = null;
+    const s = savedState[mode] || emptyModeState();
+    laps = s.laps || [];
+    bestLapMs = mode === 'track' ? (s.bestLapMs ?? null) : null;
     modeStreetBtn.classList.toggle('active', mode === 'street');
     modeTrackBtn.classList.toggle('active', mode === 'track');
     resetBtn.style.display = mode === 'street' ? '' : 'none';
