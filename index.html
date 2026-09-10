@@ -195,7 +195,7 @@
 
   <div class="topbar">
     <div>
-      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.1</span></div>
+      <div class="brand">МОТО <b>ДАШБОРД</b> <span class="ver">v1.2</span></div>
       <div class="offline-pill" id="offlinePill"><span class="dot"></span>офлайн режим</div>
     </div>
     <div class="status-col">
@@ -866,6 +866,24 @@
     statusEl.className = 'status err';
   }
 
+  // ---- Keep the screen on while riding ----
+  let wakeLock = null;
+  async function requestWakeLock(){
+    if(!('wakeLock' in navigator)) return;
+    try{
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }catch(e){ wakeLock = null; }
+  }
+  function releaseWakeLock(){
+    if(wakeLock){ wakeLock.release(); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && running && wakeLock === null){
+      requestWakeLock();
+    }
+  });
+
   async function start(){
     try{
       if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function'){
@@ -900,6 +918,7 @@
     startBtn.textContent = 'Спри';
     zeroBtn.disabled = false;
     resetBtn.disabled = false;
+    requestWakeLock();
   }
 
   function stop(){
@@ -913,6 +932,7 @@
     startBtn.textContent = 'Старт';
     markStartBtn.disabled = true;
     updateLapTimerDisplay();
+    releaseWakeLock();
   }
 
   function setMode(newMode){
