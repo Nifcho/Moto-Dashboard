@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0c0e">
 <title>Наклон & Скорост</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     --bg:#0a0c0e;
@@ -24,7 +25,7 @@
     margin:0; padding:0; min-height:100%;
     background: radial-gradient(ellipse at 50% -10%, #1a2024 0%, var(--bg) 60%);
     color:var(--text);
-    font-family:'Rajdhani',sans-serif;
+    font-family:'Rajdhani', ui-sans-serif, system-ui, -apple-system, sans-serif;
     overscroll-behavior:none;
     user-select:none;
   }
@@ -40,9 +41,15 @@
   }
   .brand{font-size:13px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; font-weight:600;}
   .brand b{color:var(--text);}
-  .status{font-size:12px; letter-spacing:.05em; color:var(--dim); font-family:'JetBrains Mono',monospace;}
+  .status{font-size:12px; letter-spacing:.05em; color:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace;}
   .status.live{color:var(--safe);}
   .status.err{color:var(--danger);}
+  .offline-pill{
+    display:none; align-items:center; gap:5px; font-size:11px; color:var(--dim);
+    font-family:ui-monospace,monospace; margin-top:2px;
+  }
+  .offline-pill.show{display:flex;}
+  .offline-pill .dot{width:6px; height:6px; border-radius:50%; background:var(--warn);}
 
   .tabs{
     width:100%; max-width:480px;
@@ -51,7 +58,7 @@
   }
   .tab-btn{
     flex:1; text-align:center; padding:10px 0; border-radius:9px;
-    font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; letter-spacing:.04em;
+    font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:14px; letter-spacing:.04em;
     color:var(--dim); background:transparent; border:none; cursor:pointer;
   }
   .tab-btn.active{ background:var(--panel-2); color:var(--text); }
@@ -71,12 +78,12 @@
   .arc-bg{stroke:#1c2126;}
   .needle{stroke:var(--text); stroke-width:3; filter:drop-shadow(0 0 6px rgba(232,230,225,.35));}
   .needle-hub{fill:var(--text);}
-  .lbl{fill:var(--dim); font-family:'JetBrains Mono',monospace; font-size:13px;}
-  .lbl-zero{fill:var(--dim); font-family:'JetBrains Mono',monospace; font-size:13px;}
+  .lbl{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
+  .lbl-zero{fill:var(--dim); font-family:ui-monospace,'JetBrains Mono',monospace; font-size:13px;}
 
   .readout{ text-align:center; margin-top:-8px; }
   .angle-val{
-    font-family:'JetBrains Mono',monospace; font-weight:700;
+    font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700;
     font-size:clamp(44px,14vw,64px); line-height:1; letter-spacing:-0.02em;
   }
   .angle-unit{font-size:16px; color:var(--dim); margin-left:4px; font-weight:500;}
@@ -86,12 +93,12 @@
   .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
   .card.wide{grid-column:1 / span 2; display:flex; justify-content:space-between; align-items:center;}
   .card .k{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
-  .card .v{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:26px; margin-top:4px;}
+  .card .v{font-family:ui-monospace,'JetBrains Mono',monospace; font-weight:700; font-size:26px; margin-top:4px;}
   .card .v span{font-size:13px; color:var(--dim); font-weight:500; margin-left:3px;}
 
   .controls{ width:100%; display:flex; gap:10px; margin-top:22px; }
   button{
-    flex:1; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:.03em;
+    flex:1; font-family:'Rajdhani', ui-sans-serif, sans-serif; font-weight:700; font-size:15px; letter-spacing:.03em;
     padding:14px 8px; border-radius:10px; border:1px solid var(--line);
     background:var(--panel-2); color:var(--text); cursor:pointer;
   }
@@ -111,15 +118,11 @@
     width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px;
     padding:10px; position:relative;
   }
-  #leafletMap{ width:100%; height:340px; border-radius:8px; background:#0d1114; }
+  #routeCanvas{ width:100%; height:280px; display:block; border-radius:8px; background:#0d1114; }
   .map-empty{
     position:absolute; inset:10px; display:flex; align-items:center; justify-content:center;
-    color:var(--dim); font-size:13px; text-align:center; padding:0 30px; pointer-events:none; z-index:5;
+    color:var(--dim); font-size:13px; text-align:center; padding:0 30px; pointer-events:none;
   }
-  .leaflet-popup-content-wrapper{ background:#181d22; color:var(--text); border-radius:8px; }
-  .leaflet-popup-tip{ background:#181d22; }
-  .leaflet-popup-content{ font-family:'Rajdhani',sans-serif; font-size:13px; line-height:1.4; }
-  .leaflet-popup-content b{ font-family:'JetBrains Mono',monospace; }
 
   .turn-log{ width:100%; margin-top:12px; display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; }
   .turn-item{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; }
@@ -129,8 +132,8 @@
   .turn-dot.danger{background:var(--danger);}
   .turn-main{flex:1; min-width:0;}
   .turn-dir{font-weight:700; font-size:14px;}
-  .turn-sub{font-size:11.5px; color:var(--dim); margin-top:1px; font-family:'JetBrains Mono',monospace;}
-  .turn-metrics{text-align:right; font-family:'JetBrains Mono',monospace;}
+  .turn-sub{font-size:11.5px; color:var(--dim); margin-top:1px; font-family:ui-monospace,'JetBrains Mono',monospace;}
+  .turn-metrics{text-align:right; font-family:ui-monospace,'JetBrains Mono',monospace;}
   .turn-metrics .lean{font-weight:700; font-size:17px;}
   .turn-metrics .spd{font-size:11px; color:var(--dim);}
   .turn-empty{color:var(--dim); font-size:13px; text-align:center; padding:16px 0;}
@@ -142,7 +145,10 @@
 <body>
 
   <div class="topbar">
-    <div class="brand">МОТО <b>ДАШБОРД</b> · експеримент</div>
+    <div>
+      <div class="brand">МОТО <b>ДАШБОРД</b> · експеримент</div>
+      <div class="offline-pill" id="offlinePill"><span class="dot"></span>офлайн режим</div>
+    </div>
     <div class="status" id="status">чака старт</div>
   </div>
 
@@ -176,19 +182,18 @@
     </div>
 
     <div class="note">
-      <b>Само за експеримент.</b> Наклонът се смята от акселерометъра и жироскопа на телефона (не компаса), но телефонът не е твърдо и точно закрепен като истински инструмент на мотора. Калибрирай с "Нулирай наклона", докато мотото стои изправено на равно, преди да тръгнеш — иначе всяко отклонение в монтажа ще се чете като лъжлив наклон. Рязко газене/спиране също леко изкривява показанието, защото засича общото ускорение, не само наклона. Никога не гледай екрана, докато караш.
+      <b>Само за експеримент.</b> Наклонът се смята от акселерометъра и жироскопа на телефона (не компаса), но телефонът не е твърдо и точно закрепен като истински инструмент на мотора. Калибрирай с "Нулирай наклона", докато мотото стои изправено на равно, преди да тръгнеш. Работи изцяло офлайн — сензорите и GPS не изискват интернет връзка. Никога не гледай екрана, докато караш.
     </div>
   </div>
 
   <!-- ===== TAB: MAP ===== -->
   <div class="panel" id="panel-map">
     <div class="map-card">
-      <div id="leafletMap"></div>
-      <div class="map-empty" id="mapEmpty">Картата ще се появи тук след старт и движение с GPS сигнал</div>
+      <canvas id="routeCanvas"></canvas>
+      <div class="map-empty" id="mapEmpty">Маршрутът ще се появи тук след старт и движение с GPS сигнал</div>
     </div>
 
     <div class="controls" style="margin-top:12px;">
-      <button id="centerBtn">Центрирай</button>
       <button class="gmaps" id="gmapsBtn" disabled>Отвори завоите в Google Maps</button>
     </div>
     <div class="controls" style="margin-top:10px;">
@@ -201,14 +206,14 @@
     </div>
 
     <div class="note">
-      Картата е базирана на OpenStreetMap (вграждане на живо Google Maps изисква платен API ключ, който тук няма). Бутонът по-горе отваря същите точки на завоите директно в Google Maps.
+      Картата тук е самостоятелна рисунка на маршрута (не сваля плочки от интернет), затова работи и напълно офлайн. Бутонът "Google Maps" изисква връзка, ако решиш да провериш завоите на истинска карта после.
     </div>
   </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 (function(){
   const statusEl = document.getElementById('status');
+  const offlinePill = document.getElementById('offlinePill');
   const angleVal = document.getElementById('angleVal');
   const speedVal = document.getElementById('speedVal');
   const maxAngleEl = document.getElementById('maxAngle');
@@ -220,26 +225,28 @@
   const zeroBtn = document.getElementById('zeroBtn');
   const resetBtn = document.getElementById('resetBtn');
   const downloadBtn = document.getElementById('downloadBtn');
-  const centerBtn = document.getElementById('centerBtn');
   const gmapsBtn = document.getElementById('gmapsBtn');
   const svg = document.getElementById('gauge');
+  const canvas = document.getElementById('routeCanvas');
+  const ctx = canvas.getContext('2d');
   const mapEmpty = document.getElementById('mapEmpty');
   const turnLogEl = document.getElementById('turnLog');
+
+  function updateOnlineStatus(){ offlinePill.classList.toggle('show', !navigator.onLine); }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
 
   // ---- Tabs ----
   const tabBtns = document.querySelectorAll('.tab-btn');
   const panels = { dash: document.getElementById('panel-dash'), map: document.getElementById('panel-map') };
-  let mapInitialized = false;
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       Object.values(panels).forEach(p => p.classList.remove('active'));
       panels[btn.dataset.tab].classList.add('active');
-      if(btn.dataset.tab === 'map'){
-        if(!mapInitialized) initMap();
-        setTimeout(() => { leafletMap.invalidateSize(); if(polyline.getLatLngs().length) drawRoute(); }, 50);
-      }
+      if(btn.dataset.tab === 'map'){ resizeCanvas(); drawRoute(); }
     });
   });
 
@@ -288,7 +295,7 @@
   // ---- State ----
   let running = false;
   let zeroOffset = 0;
-  let leanAngle = 0;      // fused roll estimate, before zero-calibration
+  let leanAngle = 0;
   let lastMotionTs = 0;
   let maxAngle = 0;
   let maxSpeed = 0;
@@ -302,31 +309,14 @@
   let inTurn = false, turnDir = 0, turnAccum = 0, turnStart = null;
   let turnMaxLean = 0, turnMaxSpeed = 0, turnMinSpeed = 0;
 
-  // ---- Leaflet map (initialized lazily) ----
-  let leafletMap, polyline, currentMarker, markerLayer;
-  function initMap(){
-    leafletMap = L.map('leafletMap', { zoomControl: true, attributionControl: true }).setView([42.6977, 23.3219], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(leafletMap);
-    polyline = L.polyline([], { color: '#3aa0ff', weight: 4, opacity: 0.85 }).addTo(leafletMap);
-    markerLayer = L.layerGroup().addTo(leafletMap);
-    mapInitialized = true;
-  }
-
   function fmt(n, d=1){ return (Math.round(n * Math.pow(10,d)) / Math.pow(10,d)).toFixed(d); }
   function timeStr(t){ return new Date(t).toLocaleTimeString('bg-BG', {hour12:false}); }
 
-  // Roll from raw gravity vector — independent of forward/backward pitch of the mount,
-  // and unaffected by compass/magnetometer interference (common near an engine/frame).
-  // This alone is standard analytically but noisy under vibration, so it's fused with
-  // the gyroscope's roll rate through a complementary filter for a stable, responsive reading.
+  // Roll from raw gravity vector, fused with gyro roll-rate via a complementary filter.
   function handleMotion(e){
     const acc = e.accelerationIncludingGravity;
     if(!acc || acc.x === null || acc.x === undefined) return;
     const { x: ax, y: ay, z: az } = acc;
-    // Negated so tilting right shows as a right lean (matches the physical mounting orientation).
     const accelRoll = Math.atan2(-ax, Math.sqrt(ay*ay + az*az)) * 180/Math.PI;
 
     const now = performance.now();
@@ -335,11 +325,10 @@
 
     let gyroRate = 0;
     if(e.rotationRate && e.rotationRate.gamma !== null && e.rotationRate.gamma !== undefined){
-      gyroRate = -e.rotationRate.gamma; // deg/s, roll axis, same sign flip as above
+      gyroRate = -e.rotationRate.gamma;
     }
 
     if(dt > 0 && dt < 0.5){
-      // gyro handles fast/vibration-noisy changes, accelerometer corrects long-term drift
       leanAngle = 0.96 * (leanAngle + gyroRate * dt) + 0.04 * accelRoll;
     } else {
       leanAngle = accelRoll;
@@ -435,38 +424,79 @@
     }).join('');
   }
 
+  function resizeCanvas(){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if(rect.width === 0) return;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
   function drawRoute(){
-    if(!mapInitialized) return;
     if(route.length < 2){
       mapEmpty.style.display = 'flex';
+      ctx.clearRect(0,0,canvas.width,canvas.height);
       return;
     }
     mapEmpty.style.display = 'none';
-    const latlngs = route.map(p => [p.lat, p.lon]);
-    polyline.setLatLngs(latlngs);
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width, H = rect.height;
+    if(W === 0) return;
+    const origin = route[0];
+    const mPerDegLat = 111320;
+    const mPerDegLon = 111320 * Math.cos(origin.lat * Math.PI/180);
 
-    markerLayer.clearLayers();
-    turnMarkers.forEach((m, i) => {
-      const marker = L.circleMarker([m.lat, m.lon], {
-        radius: 7, color: leanZoneColor(m.absLean), fillColor: leanZoneColor(m.absLean),
-        fillOpacity: 0.9, weight: 2
-      }).addTo(markerLayer);
-      const tn = m.entry;
-      marker.bindPopup(
-        `<b>Завой ${tn.dir}</b><br>${timeStr(tn.t)}<br>Наклон: <b>${fmt(tn.maxLean)}°</b><br>Скорост: <b>${Math.round(tn.minSpeed)}–${Math.round(tn.maxSpeed)} км/ч</b>`
-      );
+    const pts = route.map(p => ({
+      x: (p.lon - origin.lon) * mPerDegLon,
+      y: (p.lat - origin.lat) * mPerDegLat
+    }));
+
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    pts.forEach(p => { minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); });
+    const spanX = Math.max(maxX-minX, 10);
+    const spanY = Math.max(maxY-minY, 10);
+    const pad = 20;
+    const scale = Math.min((W-2*pad)/spanX, (H-2*pad)/spanY);
+
+    function toCanvas(p){
+      return [
+        pad + (p.x - minX) * scale + (W-2*pad - spanX*scale)/2,
+        H - pad - (p.y - minY) * scale - (H-2*pad - spanY*scale)/2
+      ];
+    }
+
+    ctx.clearRect(0,0,W,H);
+    ctx.beginPath();
+    pts.forEach((p,i) => {
+      const [cx2,cy2] = toCanvas(p);
+      if(i===0) ctx.moveTo(cx2,cy2); else ctx.lineTo(cx2,cy2);
+    });
+    ctx.strokeStyle = '#3aa0ff';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    turnMarkers.forEach(m => {
+      const x = (m.lon - origin.lon) * mPerDegLon;
+      const y = (m.lat - origin.lat) * mPerDegLat;
+      const [cx2,cy2] = toCanvas({x,y});
+      ctx.beginPath();
+      ctx.arc(cx2,cy2,5,0,Math.PI*2);
+      ctx.fillStyle = leanZoneColor(m.absLean);
+      ctx.fill();
     });
 
-    const last = route[route.length-1];
-    if(currentMarker) markerLayer.removeLayer(currentMarker);
-    currentMarker = L.circleMarker([last.lat, last.lon], {
-      radius: 6, color: '#e8e6e1', fillColor: '#e8e6e1', fillOpacity: 1, weight: 2
-    }).addTo(markerLayer);
-
-    if(route.length === 2 || !leafletMap._hasFit){
-      leafletMap.fitBounds(polyline.getBounds(), { padding: [24,24] });
-      leafletMap._hasFit = true;
-    }
+    const last = pts[pts.length-1];
+    const [lx,ly] = toCanvas(last);
+    ctx.beginPath();
+    ctx.arc(lx,ly,6,0,Math.PI*2);
+    ctx.fillStyle = '#e8e6e1';
+    ctx.shadowColor = 'rgba(232,230,225,0.7)';
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   function routeDistanceKm(){
@@ -576,17 +606,8 @@
     gmapsBtn.disabled = true;
     routeMetaEl.textContent = '—';
     renderTurns();
-    if(mapInitialized){
-      polyline.setLatLngs([]);
-      markerLayer.clearLayers();
-      leafletMap._hasFit = false;
-      mapEmpty.style.display = 'flex';
-    }
+    drawRoute();
     downloadBtn.disabled = true;
-  });
-
-  centerBtn.addEventListener('click', () => {
-    if(mapInitialized && polyline.getLatLngs().length) leafletMap.fitBounds(polyline.getBounds(), { padding:[24,24] });
   });
 
   gmapsBtn.addEventListener('click', () => {
@@ -618,6 +639,16 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
+
+  window.addEventListener('resize', () => { resizeCanvas(); drawRoute(); });
+  resizeCanvas();
+  drawRoute();
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 })();
 </script>
 </body>
